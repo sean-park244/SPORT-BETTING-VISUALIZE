@@ -1,0 +1,210 @@
+---
+title: "SPORT BETTING"
+author: "Nirma"
+date: "2026-08-24"
+format: 
+  html:
+    toc: true           # Automatically generate Table of Contents
+    toc-depth: 3        # Display TOC up to Heading 3
+    code-fold: true     # Allow folding/unfolding Python code (useful for clean reports)
+    code-tools: true    # Show copy code button
+    theme: cosmo        # Theme (can be changed to: flatly, dark, journal...)
+jupyter: python3
+execute:
+  echo: false      # Hide all code by default
+  warning: false   # Hide warning messages
+  message: false   # Hide system messages from libraries
+---
+
+## Data Initialization
+
+```{python}
+import pandas as pd
+import numpy as np
+from statsmodels.stats.proportion import proportions_ztest
+
+# Load the dataset
+df_betting = pd.read_csv("D:\DATA ENTERTAINMENT\SPORT BETTING PROJECT\gen_z_sports_betting_investing.csv")
+
+# Print columns to verify
+print(df_betting.columns)
+
+# Calculate the actual number of respondents based on percentage
+df_betting["number_of_bets"] = df_betting["Percent"] * 0.01 * df_betting["Respondents"]
+
+```
+
+## 1. Hypothesis Testing: "Treats sports betting as an investment"
+
+***(Gen Z: 26% | Millennials: 14% out of 250 respondents per group)***
+
+```{python}
+condition_hyp1 = (df_betting["Generation"].isin(["Gen Z", "Millennials"])) & (df_betting["Metric"] == "Treats sports betting as a deliberate part of long-term financial strategy")
+df_hypertesting_1 = df_betting[condition_hyp1]
+
+
+zstat1, pval1 = proportions_ztest(
+    count=df_hypertesting_1["number_of_bets"],
+    nobs=df_hypertesting_1["Respondents"]
+)
+
+print("--- METRIC 1: SPORTS BETTING AS AN INVESTMENT ---")
+print(f"Z-statistic: {zstat1:.3f}")
+print(f"p-value: {pval1:.5f}")
+if pval1 < 0.05:
+    print("Conclusion: The difference IS statistically significant.\n")
+else:
+    print("Conclusion: The difference IS NOT statistically significant.\n")
+
+
+```
+
+## 2. Hypothesis Testing: "Redirected investing funds to sports betting"
+
+***(Gen Z: 52% | Millennials: 31% out of 250 respondents per group)***
+
+```{python}
+
+condition_hyp2 = (df_betting["Generation"].isin(["Gen Z", "Millennials"]) & (df_betting["Metric"] == "Redirected investing funds to sports betting at least once in the past year"))
+
+df_hypertesting_2 = df_betting[condition_hyp2]
+
+zstat2, pval2 = proportions_ztest(
+    count=df_hypertesting_2["number_of_bets"],
+    nobs=df_hypertesting_2["Respondents"]
+)
+
+print("--- METRIC 2: REDIRECTED INVESTING FUNDS TO SPORTS BETTING ---")
+print(f"Z-statistic: {zstat2:.3f}")
+print(f"p-value: {pval2:.5f}")
+if pval1 < 0.05:
+    print("Conclusion: The difference IS statistically significant.\n")
+else:
+    print("Conclusion: The difference IS NOT statistically significant.\n")
+
+
+```
+
+## 3. Data Visualizations
+
+```{python}
+import matplotlib.pyplot as plt
+import seaborn as sns
+
+# Set global style for charts
+sns.set_theme(style="whitegrid")
+colors = ["#00FF85", "#CCCCCC", "#CCCCCC", "#CCCCCC"] # Neon green for Gen Z, grey for the rest
+gen_order = ["Gen Z", "Millennials", "Gen X", "Boomers"]
+
+# Filter out the 'Overall' group to compare the 4 generations
+df_gens = df_betting[df_betting["Generation"] != "Overall"].copy()
+
+# Separate the 2 metrics for easier plotting
+metric_mindset = "Treats sports betting as a deliberate part of long-term financial strategy"
+metric_action = "Redirected investing funds to sports betting at least once in the past year"
+
+df_mindset = df_gens[df_gens["Metric"] == metric_mindset].set_index("Generation")
+df_action = df_gens[df_gens["Metric"] == metric_action].set_index("Generation")
+
+
+```
+
+### 3.1. Mindset vs. Action Contradiction (Dumbbell Chart)
+
+* The chart reveals an interesting fact: the percentage of people who actually withdrew investment funds to bet (blue dot) is always higher than the percentage of people who consider betting an investment (red dot) across all generations.
+* This gap is particularly wide among the younger demographic.
+* Specifically, Generation Z (Gen Z) shows the greatest contradiction as the "Action" rate (exceeding 50%) is twice as high as the "Mindset" rate (around 26%).
+* Millennials also record a similar trend with a gap from 14% to 31%.
+* This indicates that a large portion of young people, despite knowing that betting is not a long-term financial strategy, are still willing to use investment funds to participate.
+
+```{python}
+#| warning: false
+# Draw connection lines (Dumbbell lines)
+fig, ax = plt.subplots(figsize=(10, 6))
+
+for gen in gen_order:
+    x_mindset = df_mindset.loc[gen, "Percent"]
+    x_action = df_action.loc[gen, "Percent"]
+    ax.plot([x_mindset, x_action], [gen, gen], color="gray", linewidth=2, zorder=1)
+
+# Plot points for Mindset and Action
+ax.scatter(df_mindset.loc[gen_order, "Percent"], gen_order, color="#FF6B6B", s=150, label="Considered as Investment (Mindset)", zorder=2)
+ax.scatter(df_action.loc[gen_order, "Percent"], gen_order, color="#4D96FF", s=150, label="Actually Withdrew Funds (Action)", zorder=2)
+
+ax.set_title("The Gap Between 'Betting as an Investment' and 'Actual Fund Withdrawal'", fontsize=14, pad=15)
+ax.set_xlabel("Percentage (%)")
+ax.legend(loc="upper right")
+plt.show()
+
+```
+
+### 3.2. Generational "Steep Fall" (Bar Chart)
+
+* The bar chart clearly demonstrates that using investment funds for sports betting is a deeply generational behavior.
+* There is a sharp, linear decline as age increases.
+* Gen Z leads this trend with an overwhelming rate of 52%.
+* This figure drops to 31% for Millennials, plummets to 10% for Gen X, and is almost negligible among Boomers at just 4%.
+* This visualization confirms that sports betting with investment money is a youth phenomenon (especially Gen Z), not a mainstream financial trend.
+
+```{python}
+#| warning: false
+fig, ax = plt.subplots(figsize=(10, 6))
+
+# Draw the bar chart representing the fund withdrawal action
+sns.barplot(
+    data=df_gens[df_gens["Metric"] == metric_action],
+    x="Generation", 
+    y="Percent", 
+    order=gen_order,
+    palette=colors,
+    ax=ax
+)
+
+# Add data labels on top of the bars
+for p in ax.patches:
+    ax.annotate(f'{int(p.get_height())}%', 
+                (p.get_x() + p.get_width() / 2., p.get_height()), 
+                ha='center', va='bottom', fontsize=12, fontweight='bold', color='black', xytext=(0, 5), textcoords='offset points')
+
+ax.set_title("The Steep Generational Decline in Redirecting Investment Funds to Betting", fontsize=14, pad=15)
+ax.set_ylabel("Percentage (%)")
+ax.set_xlabel("")
+plt.show()
+
+
+```
+
+### 3.3. The "Overall" Illusion (Horizontal Bar with Reference Line)
+
+* The orange dashed reference line at 24% exposes a "blind spot" in the data: the average figure does not represent any single generation.
+* The two younger generations, Gen Z (52%) and Millennials (31%), have surpassed this reference line.
+* Conversely, Gen X (10%) and Boomers (4%) fall far behind the average mark.
+* Through this visualization, it becomes clear that the "overall 24%" figure is merely the result of aggregating two completely opposite behavioral extremes between older and younger generations.
+
+```{python}
+#| warning: false
+fig, ax = plt.subplots(figsize=(10, 5))
+
+# Get the Overall value of the fund withdrawal action as a benchmark
+overall_action_val = df_betting[(df_betting["Generation"] == "Overall") & (df_betting["Metric"] == metric_action)]["Percent"].values[0]
+
+sns.barplot(
+    data=df_gens[df_gens["Metric"] == metric_action],
+    y="Generation", 
+    x="Percent", 
+    order=gen_order,
+    palette=colors,
+    ax=ax
+)
+
+# Add a reference line for the average
+ax.axvline(x=overall_action_val, color="#FF4500", linestyle="--", linewidth=2.5)
+ax.text(overall_action_val + 1, 3.2, f"Assumed 'Overall' average ({int(overall_action_val)}%)", color="#FF4500", fontweight="bold")
+
+ax.set_title("The 'Overall' Metric Does Not Represent Any Specific Generation", fontsize=14, pad=15)
+ax.set_xlabel("Percentage (%)")
+ax.set_ylabel("")
+plt.show()
+
+
+```
